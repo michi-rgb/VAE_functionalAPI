@@ -154,6 +154,31 @@ def CreateAdjacencyMatrixWithAhatH(points):
     AhatH = np.array(AhatH)
     return AhatH
 
+def CreateAdjacencyMatrixWithAhatH2(points):
+    neighborDistance = 0.1
+    AhatH=[]
+    for model in range(points.shape[0]):
+        print("processing: model",model)
+        adjacencyMatrixPlusI = np.zeros((samplingPoints,samplingPoints))
+        for i in range(samplingPoints):
+            squaredDistanceOfLinei=[]
+            for j in range(samplingPoints):
+                squaredDistance = np.sum((points[model, i, :] - points[model, j, :])**2)
+                squaredDistanceOfLinei.append(squaredDistance)
+            neighborIndex = np.array(squaredDistanceOfLinei) < neighborDistance
+            adjacencyMatrixPlusI[i,neighborIndex] = 1
+            # plt.hist(squaredDistanceOfLinei, bins=50)
+            # plt.show()
+        D = np.sum(adjacencyMatrixPlusI, axis=1)
+        Dii = np.eye(D.shape[0])*D
+        D2 = Dii**-0.5
+        D2[D2 == np.inf] = 0
+        AhatHone = np.dot(D2, adjacencyMatrixPlusI)
+        AhatHone = np.dot(AhatHone, D2)
+        AhatH.append(AhatHone)
+    AhatH = np.array(AhatH)
+    return AhatH
+
 # trainデータ数削減
 random.seed(0)
 train_index = random.sample(range(train_points.shape[0]), 1000)
@@ -186,9 +211,9 @@ X_train = Scaler_AspectChange2(train_points)
 # AhatH_train = CreateAhatH(A_train)
 # AhatH_test = CreateAhatH(A_test)
 
-AhatH_train = CreateAdjacencyMatrixWithAhatH(X_train)
+AhatH_train = CreateAdjacencyMatrixWithAhatH2(X_train)
 
 # np.save("A_train.npy", A_train)
-np.save("AhatH_train_neighbor10.npy", AhatH_train)
-np.save("points_train_neighbor10.npy", X_train)
+np.save("AhatH_train_neighborDistance.npy", AhatH_train)
+np.save("points_train_neighborDistance.npy", X_train)
 # np.save("labels_train.npy", train_labels)
