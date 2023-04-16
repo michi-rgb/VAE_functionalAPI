@@ -19,11 +19,8 @@ from tensorflow.keras import backend as K
 
 root = os.getcwd()
 
-points_train = np.load("points_train.npy")
-# labels_train = np.load("labels_train.npy")
-# CLASS_MAP = np.load("CLASS_MAP.npy", allow_pickle=True).tolist()
-# A_train = np.load("A_train.npy")
-AhatH_train = np.load("AhatH_train.npy")
+points_train = np.load("points_train_neighbor10.npy")
+AhatH_train = np.load("AhatH_train_neighbor10.npy")
 samplingPoints=512
 
 def plot3D(x, y, z, dataName=""):
@@ -109,12 +106,12 @@ def RunTrain():
 
 def RunPredict():
     model.load_weights(modelName)
-    pred = model.predict([points_train, AhatH_train])
+    pred = model.predict([points_train[:20], AhatH_train[:20]])
 
-    for i in range(3):
+    for i in range(20):
         plot3D(points_train[i,:,0], points_train[i,:,1], points_train[i,:,2])
         plot3D(pred[i,:,0], pred[i,:,1], pred[i,:,2])
 
 modelName = "model.h5"
 RunTrain()
-# RunPredict()
+RunPredict()
