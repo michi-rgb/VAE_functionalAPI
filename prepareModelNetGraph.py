@@ -80,6 +80,14 @@ def Scaler_AspectMaintain2(points):
         ss_points_all.append(ss_points)
     return np.array(ss_points_all)
 
+def Scaler_AspectChange2(points):
+    ss_points_all=[]
+    ss_X = StandardScaler()
+    for i in range(points.shape[0]):
+        ss_points = ss_X.fit_transform(points[i, :, :])
+        ss_points_all.append(ss_points)
+    return np.array(ss_points_all)
+
 def Rotate(points, j=0):
     """
     z軸周りに回転
@@ -100,11 +108,54 @@ def Rotate(points, j=0):
     # plot3D(rotated_points[j,:,0], rotated_points[j,:,1], rotated_points[j,:,2])
     return rotated_points
 
+def CreateAdjacencyMatrix(points):
+    adjacencyMatrixList=[]
+    for model in range(points.shape[0]):
+        print("processing: model",model)
+        adjacencyMatrix = np.zeros((samplingPoints,samplingPoints))
+        for i in range(samplingPoints):
+            squaredDistanceOfLinei=[]
+            for j in range(samplingPoints):
+                squaredDistance = np.sum((points[model, i, :] - points[model, j, :])**2)
+                squaredDistanceOfLinei.append(squaredDistance)
+            sortIndex = np.argsort(squaredDistanceOfLinei)[1:4]
+            adjacencyMatrix[i,sortIndex] = 1
+        adjacencyMatrixList.append(adjacencyMatrix)
+    adjacencyMatrixList = np.array(adjacencyMatrixList)
+    return adjacencyMatrixList
+
+def CreateAhatH(A):
+    AplusI = A + np.eye(A.shape[1])
+    D = np.eye(A.shape[1])*0.5
+    AhatH=[]
+    for model in range(A.shape[0]):
+        print("processing: model",model)
+        AhatHone = np.dot(D, AplusI[model,:,:])
+        AhatHone = np.dot(AhatHone, D)
+        AhatH.append(AhatHone)
+    return np.array(AhatH)
+
+def CreateAdjacencyMatrixWithAhatH(points):
+    AhatH=[]
+    for model in range(points.shape[0]):
+        print("processing: model",model)
+        adjacencyMatrixPlusI = np.zeros((samplingPoints,samplingPoints))
+        for i in range(samplingPoints):
+            squaredDistanceOfLinei=[]
+            for j in range(samplingPoints):
+                squaredDistance = np.sum((points[model, i, :] - points[model, j, :])**2)
+                squaredDistanceOfLinei.append(squaredDistance)
+            sortIndex = np.argsort(squaredDistanceOfLinei)[:4]
+            adjacencyMatrixPlusI[i,sortIndex] = 1
+        AhatH.append(adjacencyMatrixPlusI / 4)
+    AhatH = np.array(AhatH)
+    return AhatH
+
 # trainデータ数削減
-# random.seed(0)
-# train_index = random.sample(range(train_points.shape[0]), 500)
-# train_points = train_points[train_index,:,:]
-# train_labels = train_labels[train_index]
+random.seed(0)
+train_index = random.sample(range(train_points.shape[0]), 1000)
+train_points = train_points[train_index,:,:]
+train_labels = train_labels[train_index]
 
 # ノード数削減
 samplingPoints = 512
@@ -118,34 +169,23 @@ test_points = test_points[:,index,:]
 # test_points = Rotate(test_points)
 
 # 標準化
-X_train = Scaler_AspectMaintain2(train_points)
-X_test = Scaler_AspectMaintain2(test_points)
+X_train = Scaler_AspectChange2(train_points)
+# X_test = Scaler_AspectChange2(test_points)
 
+# 可視化
 # for i in range(3):
 #     plot3D(train_points[i,:,0], train_points[i,:,1], train_points[i,:,2])
 #     plot3D(X_train[i,:,0], X_train[i,:,1], X_train[i,:,2])
 
-def CreateAdjacencyMatrix(points):
-    adjacencyMatrixList=[]
-    for model in range(points.shape[0]):
-        print("processing: model",model)
-        adjacencyMatrix = np.zeros((samplingPoints,samplingPoints))
-        for i in range(samplingPoints):
-            for j in range(samplingPoints):
-                squaredDistance = np.sum((points[model, i, :] - points[model, j, :])**2)
-                adjacencyMatrix[i,j] = squaredDistance
-        sortIndex = np.argsort(adjacencyMatrix, axis=1)[::-1]
-        adjacencyMatrix2 = sortIndex < 3
-        adjacencyMatrixList.append(adjacencyMatrix2.astype(int))
-    adjacencyMatrixList = np.array(adjacencyMatrixList)
-    return adjacencyMatrixList
+# A_train = CreateAdjacencyMatrix(X_train)#(model数,512,512), edge数：各modelにつき1536個(512*3)
+# A_test = CreateAdjacencyMatrix(X_test)
 
-A_train = CreateAdjacencyMatrix(X_train)#(model数,512,512), edge数：各modelにつき1536個(512*3)
-A_test = CreateAdjacencyMatrix(X_test)
+# AhatH_train = CreateAhatH(A_train)
+# AhatH_test = CreateAhatH(A_test)
 
-np.save("A_train.npy", A_train)
-np.save("A_test.npy", A_test)
-np.save("train_points.npy", X_train)
-np.save("test_points.npy", X_test)
-np.save("train_labels.npy", train_labels)
-np.save("test_labels.npy", test_labels)
+AhatH_train = CreateAdjacencyMatrixWithAhatH(X_train)
+
+# np.save("A_train.npy", A_train)
+np.save("AhatH_train.npy", AhatH_train)
+np.save("points_train.npy", X_train)
+np.save("labels_train.npy", train_labels)
