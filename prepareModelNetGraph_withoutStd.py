@@ -15,8 +15,8 @@ import os
 
 root = os.getcwd()
 os.chdir(r"G:\マイドライブ\python\3Dモデル")
-train_points = np.load("train_points.npy")
-# test_points = np.load("test_points.npy")
+points_train = np.load("points_train.npy")
+points_test = np.load("points_test.npy")
 # train_labels = np.load("train_labels.npy")
 # test_labels = np.load("test_labels.npy")
 # CLASS_MAP = np.load("CLASS_MAP.npy", allow_pickle=True).tolist()
@@ -102,25 +102,29 @@ def CreateAdjacencyMatrixWithAhatH2(points):
 
 # trainデータ数削減
 random.seed(0)
-train_index = random.sample(range(train_points.shape[0]), 1000)
-train_points = train_points[train_index,:,:]
+train_index = random.sample(range(points_train.shape[0]), 1000)
+points_train = points_train[train_index,:,:]
 # train_labels = train_labels[train_index]
 
 # ノード数削減
 samplingPoints = 512
 random.seed(0)
-index = random.sample(range(train_points.shape[1]),samplingPoints)
-train_points = train_points[:,index,:]
-# test_points = test_points[:,index,:]
+index = random.sample(range(points_train.shape[1]),samplingPoints)
+points_train = points_train[:,index,:]
+points_test = points_test[:,index,:]
 
-train_points = Center(train_points)
+points_train = Center(points_train)
+points_test = Center(points_test)
 
 # 可視化
-for i in range(3):
-    plot3D(train_points[i,:,0], train_points[i,:,1], train_points[i,:,2])
+# for i in range(3):
+#     plot3D(points_train[i,:,0], points_train[i,:,1], points_train[i,:,2])
 
-AhatH_train = CreateAdjacencyMatrixWithAhatH(train_points)
+AhatH_train = CreateAdjacencyMatrixWithAhatH(points_train)
+AhatH_test = CreateAdjacencyMatrixWithAhatH(points_test)
 
 os.chdir(r"G:\マイドライブ\python\3Dモデル\GNN\graphData")
-np.save("AhatH_train_neighborDistance.npy", AhatH_train)
-np.save("points_train_neighborDistance.npy", train_points)
+np.save("AhatH_train.npy", AhatH_train)
+np.save("points_train.npy", points_train)
+np.save("AhatH_test.npy", AhatH_test)
+np.save("points_test.npy", points_test)

@@ -19,13 +19,25 @@ from tensorflow.keras import backend as K
 
 root = os.getcwd()
 os.chdir(r"G:\マイドライブ\python\3Dモデル\GNN\graphData")
-points_train = np.load("points_train_neighborDistance.npy")
-AhatH_train = np.load("AhatH_train_neighborDistance.npy")
+points_train = np.load("points_train.npy")
+AhatH_train = np.load("AhatH_train.npy")
+points_test = np.load("points_test.npy")
+AhatH_test = np.load("AhatH_test.npy")
 os.chdir(root)
 samplingPoints=points_train.shape[1]
 
+# modelのサイズが違いすぎ
+for i in range(points_train.shape[0]):
+    scale = points_train[i,:,:].max()
+    points_train[i,:,:] = points_train[i,:,:] / scale
+    # print(f"size:{points_train[i,:,:].max() - points_train[i,:,:].min()}, centerX:{round(points_train[i,:,0].mean(), 5)}")
+for i in range(points_test.shape[0]):
+    scale = points_test[i,:,:].max()
+    points_test[i,:,:] = points_test[i,:,:] / scale
+
 ss = StandardScaler()
-points_train = ss.fit_transform(points_train)
+points_train = ss.fit_transform(points_train.reshape(-1,3)).reshape(points_train.shape)
+points_test = ss.transform(points_test.reshape(-1,3)).reshape(points_test.shape)
 
 def plot3D(x, y, z, dataName=""):
     # Figureを追加
@@ -70,7 +82,9 @@ def OneCycle(x, layerNum, withAhatH):
     x = layers.Dropout(rate=dropRate)(x)
     return x
 
+x = OneCycle(x, 32, False)
 x = OneCycle(x, 32, True)
+x = OneCycle(x, 32, False)
 
 pointsOutput = layers.Dense(3)(x)
 
@@ -89,31 +103,45 @@ def RunTrain():
         [points_train, AhatH_train], points_train,
         batch_size=64,
         epochs=100,
-        validation_split=0.2,
+        validation_data=[[points_test, AhatH_test], points_test],
         shuffle=True,
         steps_per_epoch=None,
-        validation_freq=1,
         verbose=0)
 
     plt.plot(history.history['mse'], label="train")
     plt.plot(history.history['val_mse'], label="test")
     plt.legend()
+    plt.yscale("log")
     plt.show()
 
     model.save(modelName)
 
-def RunPredict(points_train):
+def RunPredict(points_train, points_test, AhatH_train, AhatH_test):
     model.load_weights(modelName)
-    pred = model.predict([points_train[:20], AhatH_train[:20]])
+    pred_train = model.predict([points_train, AhatH_train])
+    pred_test = model.predict([points_test, AhatH_test])
 
     # 標準化戻し
-    points_train = ss.inverse_transform(points_train)
-    pred = ss.inverse_transform(pred)
+    points_train = ss.inverse_transform(points_train.reshape(-1,3)).reshape(points_train.shape)
+    points_test = ss.inverse_transform(points_test.reshape(-1,3)).reshape(points_test.shape)
+    pred_train = ss.inverse_transform(pred_train.reshape(-1,3)).reshape(pred_train.shape)
+    pred_test = ss.inverse_transform(pred_test.reshape(-1,3)).reshape(pred_test.shape)
 
-    for i in range(20):
-        plot3D(points_train[i,:,0], points_train[i,:,1], points_train[i,:,2])
-        plot3D(pred[i,:,0], pred[i,:,1], pred[i,:,2])
+    for i in range(5):
+        plots(points_train[i], pred_train[i])
+    for i in range(5):
+        plots(points_test[i], pred_test[i])
+
+def plots(points, pred):
+    plot3D(points[:,0], points[:,1], points[:,2])
+    plot3D(pred[:,0], pred[:,1], pred[:,2])
+
+    plt.scatter(points[:,0], points[:,1], label="true", alpha=0.5)
+    plt.scatter(pred[:,0], pred[:,1], label="pred", alpha=0.5)
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 modelName = "model.h5"
 RunTrain()
-RunPredict(points_train)
+RunPredict(points_train[:20], points_test[:20], AhatH_train[:20], AhatH_test[:20])
